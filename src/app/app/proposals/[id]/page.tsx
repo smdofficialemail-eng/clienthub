@@ -56,9 +56,17 @@ export default async function ProposalDetailPage({
             </p>
           </div>
         </div>
-        <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${meta.classes}`}>
-          {meta.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/app/proposals/${proposal.id}/edit`}
+            className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-bold text-slate-600 shadow-sm transition hover:border-brand-400 hover:text-brand-600"
+          >
+            ✏️ Edit design
+          </Link>
+          <span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${meta.classes}`}>
+            {meta.label}
+          </span>
+        </div>
       </div>
 
       <ProposalControls

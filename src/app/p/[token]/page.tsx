@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatMoney, formatDate } from "@/lib/format";
+import { parseLayout } from "@/lib/layout";
 import { PublicActions } from "./public-actions";
+import { LayoutViewer } from "@/components/layout-viewer";
 
 export const metadata: Metadata = { title: "Proposal — ClientHub" };
 
@@ -34,6 +36,7 @@ export default async function PublicProposalPage({
 
   const total = proposal.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const settled = status === "approved" || status === "declined";
+  const layout = parseLayout(proposal.layout);
 
   return (
     <div className="app-bg min-h-screen py-10">
@@ -72,7 +75,23 @@ export default async function PublicProposalPage({
             </p>
           </div>
 
-          <div className="px-5 py-8 sm:px-8">
+          {layout && (
+            <div className="p-4 sm:p-8">
+              <LayoutViewer layout={layout} currency={proposal.workspace.currency} />
+              {status === "approved" && (
+                <div className="mt-6 rounded-xl bg-emerald-50 px-5 py-4 text-center text-sm font-bold text-emerald-700">
+                  ✓ Approved — thanks {proposal.clientName}! We&apos;ll be in touch to get started.
+                </div>
+              )}
+              {status === "declined" && (
+                <div className="mt-6 rounded-xl bg-red-50 px-5 py-4 text-center text-sm font-bold text-red-700">
+                  This proposal was declined. No worries — happy to revise it.
+                </div>
+              )}
+            </div>
+          )}
+
+          {!layout && <div className="px-5 py-8 sm:px-8">
             {proposal.intro && (
               <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">
                 {proposal.intro}
@@ -124,7 +143,7 @@ export default async function PublicProposalPage({
                 This proposal was declined. No worries — happy to revise it.
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Actions */}

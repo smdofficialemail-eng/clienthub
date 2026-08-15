@@ -1,4 +1,13 @@
 import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from "pdf-lib";
+import {
+  hexToRgb,
+  parseLayout,
+  totalOf,
+  PDF_PAGE_H,
+  PDF_PAGE_W,
+  PDF_SCALE,
+  type ProposalLayout,
+} from "./layout";
 
 const PAGE_W = 612;
 const PAGE_H = 792;
@@ -74,6 +83,9 @@ const WINANSI_FIXES: Record<string, string> = {
   "·": "-",
   "✓": "",
   "€": "EUR",
+  "₹": "Rs",
+  "£": "GBP",
+  "¥": "Yen",
 };
 
 /** Keep only characters the built-in WinAnsi fonts can encode. */
@@ -265,6 +277,198 @@ async function buildDocument(data: DocumentData): Promise<Uint8Array> {
   return pdf.save();
 }
 
+/** Filled rectangle, optionally with rounded corners (via SVG path). */
+function drawRoundedRect(
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radius: number,
+  color: ReturnType<typeof rgb>
+) {
+  const r = Math.max(0, Math.min(radius, w / 2, h / 2));
+  if (r <= 0.5) {
+    page.drawRectangle({ x, y, width: w, height: h, color });
+    return;
+  }
+  const path = [
+    `M ${r} 0`,
+    `H ${w - r}`,
+    `A ${r} ${r} 0 0 1 ${w} ${r}`,
+    `V ${h - r}`,
+    `A ${r} ${r} 0 0 1 ${w - r} ${h}`,
+    `H ${r}`,
+    `A ${r} ${r} 0 0 1 0 ${h - r}`,
+    `V ${r}`,
+    `A ${r} ${r} 0 0 1 ${r} 0`,
+    "Z",
+  ].join(" ");
+  page.drawSvgPath(path, { x, y, color });
+}
+
+/** Wrap text to a max width, keeping words intact. */
+function wrapText(text: string, font: PDFFont, size: number, maxWidth: number) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? line + " " + word : word;
+    if (font.widthOfTextAtSize(candidate, size) > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawAligned(
+  page: PDFPage,
+  font: PDFFont,
+  text: string,
+  x: number,
+  maxWidth: number,
+  y: number,
+  size: number,
+  color: ReturnType<typeof rgb>,
+  align: "left" | "center" | "right" = "left"
+) {
+  const safe = toWinAnsi(text);
+  const width = font.widthOfTextAtSize(safe, size);
+  let start = x;
+  if (align === "center") start = x + (maxWidth - width) / 2;
+  else if (align === "right") start = x + maxWidth - width;
+  drawText(page, font, safe, start, y, size, color);
+}
+
+function drawLayoutTable(
+  page: PDFPage,
+  font: PDFFont,
+  bold: PDFFont,
+  x: number,
+  yTop: number,
+  w: number,
+  items: { description: string; qty: number; unitPrice: number }[],
+  currency: string
+) {
+  const money = moneyFor(currency);
+  const qtyW = w * 0.1;
+  const unitW = w * 0.18;
+  const amtW = w * 0.18;
+  const descW = w - qtyW - unitW - amtW;
+  const headerH = 14;
+  const rowH = 18;
+  let y = PDF_PAGE_H - yTop;
+
+  y -= headerH;
+  drawText(page, bold, "ITEM", x, y, 7, COLOR.faint);
+  drawRightText(page, bold, "QTY", x + descW + qtyW, y, 7, COLOR.faint);
+  drawRightText(page, bold, "UNIT PRICE", x + descW + qtyW + unitW, y, 7, COLOR.faint);
+  drawRightText(page, bold, "AMOUNT", x + w, y, 7, COLOR.faint);
+  drawLine(page, x, y + 2, x + w, COLOR.ink, 1);
+  y -= rowH;
+
+  for (const item of items) {
+    drawText(page, font, item.description || "Item", x, y, 9, COLOR.ink);
+    drawRightText(page, font, String(item.qty), x + descW + qtyW, y, 9, COLOR.muted);
+    drawRightText(page, font, money.format(item.unitPrice), x + descW + qtyW + unitW, y, 9, COLOR.muted);
+    drawRightText(page, bold, money.format(item.qty * item.unitPrice), x + w, y, 9, COLOR.ink);
+    drawLine(page, x, y + 2, x + w, COLOR.line, 0.75);
+    y -= rowH;
+  }
+
+  y -= 4;
+  drawLine(page, x, y + 4, x + w, COLOR.ink, 1.2);
+  drawRightText(page, bold, "TOTAL", x + descW + qtyW + unitW, y, 9, COLOR.muted);
+  drawRightText(page, bold, money.format(totalOf(items)), x + w, y, 12, COLOR.ink);
+}
+
+async function drawLayoutImage(
+  page: PDFPage,
+  pdf: PDFDocument,
+  bold: PDFFont,
+  x: number,
+  yTop: number,
+  w: number,
+  h: number,
+  url: string | undefined
+) {
+  if (!url) return;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("bad status");
+    const buffer = await res.arrayBuffer();
+    const type = res.headers.get("content-type") || "";
+    let image;
+    if (type.includes("png")) {
+      image = await pdf.embedPng(buffer);
+    } else if (type.includes("jpeg") || type.includes("jpg")) {
+      image = await pdf.embedJpg(buffer);
+    } else {
+      throw new Error("unsupported image type");
+    }
+    const boxW = w - 6;
+    const boxH = h - 6;
+    const s = Math.min(boxW / image.width, boxH / image.height);
+    const dw = image.width * s;
+    const dh = image.height * s;
+    page.drawImage(image, {
+      x: x + (w - dw) / 2,
+      y: PDF_PAGE_H - yTop - (h - dh) / 2 - dh,
+      width: dw,
+      height: dh,
+    });
+  } catch {
+    page.drawRectangle({ x, y: PDF_PAGE_H - yTop - h, width: w, height: h, color: COLOR.line });
+    drawText(page, bold, "Image unavailable", x + 8, PDF_PAGE_H - yTop - h + 14, 8, COLOR.muted);
+  }
+}
+
+/** Render a Canva-style layout at A4 scale. */
+async function buildLayoutPdf(layout: ProposalLayout, currency: string): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const page = pdf.addPage([PDF_PAGE_W, PDF_PAGE_H]);
+  const scale = PDF_SCALE;
+
+  for (const b of layout.blocks) {
+    const x = b.x * scale;
+    const yTop = b.y * scale;
+    const w = b.w * scale;
+    const h = b.h * scale;
+    const p = b.props;
+
+    if (b.type === "heading" || b.type === "text") {
+      const size = (p.fontSize ?? (b.type === "heading" ? 34 : 13)) * scale;
+      const f = p.bold || b.type === "heading" ? bold : font;
+      const color = rgb(hexToRgb(p.color).r, hexToRgb(p.color).g, hexToRgb(p.color).b);
+      const lines = wrapText(p.text ?? "", f, size, w);
+      const lineH = size * 1.28;
+      let y = PDF_PAGE_H - yTop - size;
+      for (const line of lines) {
+        drawAligned(page, f, line, x, w, y, size, color, p.align ?? "left");
+        y -= lineH;
+      }
+    } else if (b.type === "table") {
+      drawLayoutTable(page, font, bold, x, yTop, w, p.items ?? [], currency);
+    } else if (b.type === "image") {
+      await drawLayoutImage(page, pdf, bold, x, yTop, w, h, p.url);
+    } else if (b.type === "divider") {
+      const c = rgb(hexToRgb(p.color, "#e2e8f0").r, hexToRgb(p.color, "#e2e8f0").g, hexToRgb(p.color, "#e2e8f0").b);
+      drawLine(page, x, PDF_PAGE_H - yTop - h / 2, x + w, c, (p.thickness ?? 2) * scale);
+    } else if (b.type === "shape") {
+      const fill = rgb(hexToRgb(p.fill, "#4f46e5").r, hexToRgb(p.fill, "#4f46e5").g, hexToRgb(p.fill, "#4f46e5").b);
+      drawRoundedRect(page, x, PDF_PAGE_H - yTop - h, w, h, (p.radius ?? 0) * scale, fill);
+    }
+  }
+
+  return pdf.save();
+}
+
 export async function buildProposalPdf(proposal: {
   title: string;
   clientName: string;
@@ -273,7 +477,13 @@ export async function buildProposalPdf(proposal: {
   status: string;
   createdAt: Date;
   items: PdfLineItem[];
+  layout?: unknown;
 }, companyName: string, currency = "USD"): Promise<Uint8Array> {
+  const layout = parseLayout(proposal.layout);
+  if (layout) {
+    return buildLayoutPdf(layout, currency);
+  }
+
   const total = proposal.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const metaLines = [
     "Proposal · " +
