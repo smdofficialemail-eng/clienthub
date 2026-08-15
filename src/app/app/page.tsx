@@ -6,39 +6,76 @@ import { formatMoney, timeAgo } from "@/lib/format";
 export default async function DashboardPage() {
   const { workspace } = await requireWorkspace();
 
-  const [leadCount, valueAgg, clientCount, taskCount, recentLeads, recentActivities] =
-    await Promise.all([
-      prisma.lead.count({ where: { workspaceId: workspace.id } }),
-      prisma.lead.aggregate({
-        where: { workspaceId: workspace.id, status: "active" },
-        _sum: { value: true },
-      }),
-      prisma.client.count({ where: { workspaceId: workspace.id } }),
-      prisma.task.count({
-        where: { done: false, lead: { workspaceId: workspace.id } },
-      }),
-      prisma.lead.findMany({
-        where: { workspaceId: workspace.id },
-        orderBy: { updatedAt: "desc" },
-        take: 5,
-        include: { stage: true },
-      }),
-      prisma.activity.findMany({
-        where: { lead: { workspaceId: workspace.id } },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: { lead: true, user: true },
-      }),
-    ]);
+  const [
+    leadCount,
+    valueAgg,
+    clientCount,
+    invoiceCount,
+    taskCount,
+    appointmentCount,
+    recentLeads,
+    recentActivities,
+    pipeline,
+    recentProposals,
+    recentInvoices,
+  ] = await Promise.all([
+    prisma.lead.count({ where: { workspaceId: workspace.id, status: "active" } }),
+    prisma.lead.aggregate({
+      where: { workspaceId: workspace.id, status: "active" },
+      _sum: { value: true },
+    }),
+    prisma.client.count({ where: { workspaceId: workspace.id } }),
+    prisma.invoice.count({ where: { workspaceId: workspace.id } }),
+    prisma.task.count({ where: { workspaceId: workspace.id, done: false } }),
+    prisma.appointment.count({
+      where: { workspaceId: workspace.id, status: "scheduled", startsAt: { gte: new Date() } },
+    }),
+    prisma.lead.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      include: { stage: true },
+    }),
+    prisma.activity.findMany({
+      where: { lead: { workspaceId: workspace.id } },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { lead: true, user: true },
+    }),
+    prisma.pipeline.findFirst({
+      where: { workspaceId: workspace.id },
+      include: { stages: { orderBy: { position: "asc" }, include: { leads: true } } },
+    }),
+    prisma.proposal.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+      include: { items: true },
+    }),
+    prisma.invoice.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { updatedAt: "desc" },
+      take: 4,
+      include: { items: true },
+    }),
+  ]);
 
-  const outstandingInvoices = await prisma.invoice.findMany({
-    where: { workspaceId: workspace.id, status: { not: "paid" } },
-    include: { items: true },
-  });
-  const outstanding = outstandingInvoices.reduce(
-    (sum, inv) => sum + inv.items.reduce((s, item) => s + item.qty * item.unitPrice, 0),
-    0
-  );
+  const invoiceTotal = (inv: { items: { qty: number; unitPrice: number }[] }) =>
+    inv.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+  const [invoices, paidInvoices] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { workspaceId: workspace.id },
+      include: { items: true },
+    }),
+    prisma.invoice.findMany({
+      where: { workspaceId: workspace.id, status: "paid" },
+      include: { items: true },
+    }),
+  ]);
+  const outstanding = invoices
+    .filter((inv) => inv.status !== "paid")
+    .reduce((sum, inv) => sum + invoiceTotal(inv), 0);
+  const collected = paidInvoices.reduce((sum, inv) => sum + invoiceTotal(inv), 0);
 
   const stats = [
     {
@@ -66,14 +103,39 @@ export default async function DashboardPage() {
       sub: "converted",
     },
     {
+      label: "Invoices",
+      value: String(invoiceCount),
+      href: "/app/invoices",
+      chip: "bg-slate-100 text-slate-600",
+      icon: "M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3 3v2h10V7H7zm0 4v2h6v-2H7zm0 4v2h8v-2H7z",
+      sub: "issued",
+    },
+    {
+      label: "Collected",
+      value: formatMoney(collected, workspace.currency),
+      href: "/app/invoices",
+      chip: "bg-emerald-50 text-emerald-600",
+      icon: "M9 12l2 2 4-4m5.6-1.6A10 10 0 1 1 5.4 5.4 10 10 0 0 1 18.6 4.4z",
+      sub: "paid in full",
+    },
+    {
       label: "Outstanding",
       value: formatMoney(outstanding, workspace.currency),
       href: "/app/invoices",
       chip: "bg-amber-50 text-amber-600",
-      icon: "M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3 3v2h10V7H7zm0 4v2h6v-2H7zm0 4v2h8v-2H7z",
+      icon: "M13 7V5a1 1 0 0 0-2 0v2a1 1 0 0 0 2 0zm1 6.2a3 3 0 1 0-4 0V16a2 2 0 1 0 4 0v-2.8zM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z",
       sub: "to collect",
     },
   ];
+
+  const stageBreakdown =
+    pipeline?.stages.map((stage) => ({
+      name: stage.name,
+      color: stage.color,
+      count: stage.leads.length,
+      value: stage.leads.reduce((sum, lead) => sum + lead.value, 0),
+    })) ?? [];
+  const maxStageCount = Math.max(1, ...stageBreakdown.map((s) => s.count));
 
   const ACTIVITY_META: Record<string, { label: string; cls: string; icon: string }> = {
     note: { label: "Note", cls: "bg-slate-100 text-slate-600", icon: "M12 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5v1H4v-1z" },
@@ -101,7 +163,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <Link
             key={s.label}
@@ -127,6 +189,102 @@ export default async function DashboardPage() {
             <p className="mt-0.5 text-xs text-slate-400">{s.sub}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Pipeline overview + recent documents */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <section className="card p-6 lg:col-span-1">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-base font-extrabold tracking-tight text-slate-900">Pipeline</h2>
+            <Link href="/app/pipeline" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+              Open →
+            </Link>
+          </div>
+          {stageBreakdown.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">No pipeline stages yet.</p>
+          ) : (
+            <div className="space-y-3.5">
+              {stageBreakdown.map((stage) => (
+                <div key={stage.name}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-600">
+                      <span className="size-2 rounded-full" style={{ background: stage.color }} />
+                      {stage.name}
+                    </span>
+                    <span className="text-slate-400">
+                      {stage.count} · {formatMoney(stage.value, workspace.currency)}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${(stage.count / maxStageCount) * 100}%`, background: stage.color }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4 text-xs">
+            <div>
+              <p className="font-bold uppercase tracking-wide text-slate-400">Open tasks</p>
+              <p className="mt-0.5 text-lg font-extrabold text-slate-800">{taskCount}</p>
+            </div>
+            <div>
+              <p className="font-bold uppercase tracking-wide text-slate-400">Appointments</p>
+              <p className="mt-0.5 text-lg font-extrabold text-slate-800">{appointmentCount} upcoming</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="card p-6 lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-extrabold tracking-tight text-slate-900">Recent documents</h2>
+            <div className="flex items-center gap-3">
+              <Link href="/app/proposals" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                Proposals →
+              </Link>
+              <Link href="/app/invoices" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
+                Invoices →
+              </Link>
+            </div>
+          </div>
+          {recentProposals.length === 0 && recentInvoices.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">
+              Proposals and invoices you create will show up here.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {[...recentProposals.map((p) => ({ kind: "proposal" as const, id: p.id, label: p.title, sub: p.clientName, date: p.updatedAt, total: invoiceTotal(p), href: `/app/proposals/${p.id}` })), ...recentInvoices.map((inv) => ({ kind: "invoice" as const, id: inv.id, label: `${inv.number} — ${inv.title}`, sub: inv.clientName, date: inv.updatedAt, total: invoiceTotal(inv), href: `/app/invoices/${inv.id}` }))]
+                .sort((a, b) => b.date.getTime() - a.date.getTime())
+                .slice(0, 6)
+                .map((doc) => (
+                  <li key={doc.id}>
+                    <Link href={doc.href} className="flex items-center gap-3 py-3 transition hover:bg-slate-50">
+                      <span
+                        className={`icon-chip size-9 ${
+                          doc.kind === "proposal"
+                            ? "bg-indigo-50 text-indigo-600"
+                            : "bg-amber-50 text-amber-600"
+                        }`}
+                      >
+                        <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d={doc.kind === "proposal" ? "M4 5a1 1 0 0 1 1-1h10l5 5v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5zm5 2v2h6V7H9zm0 4v2h6v-2H9zm0 4v2h4v-2H9z" : "M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3 3v2h10V7H7zm0 4v2h6v-2H7zm0 4v2h8v-2H7z"} />
+                        </svg>
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-800">{doc.label}</p>
+                        <p className="truncate text-xs text-slate-400">{doc.sub} · {timeAgo(doc.date)}</p>
+                      </div>
+                      <span className="shrink-0 text-sm font-extrabold text-slate-700">
+                        {formatMoney(doc.total, workspace.currency)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </section>
       </div>
 
       {/* Feeds */}

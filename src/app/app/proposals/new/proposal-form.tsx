@@ -12,16 +12,28 @@ const emptyItem = { description: "", qty: 1, unitPrice: 0 };
 export function ProposalForm({
   leads,
   preselectLeadId,
+  preselectClientName = null,
   currency = "USD",
 }: {
   leads: LeadOption[];
   preselectLeadId: string | null;
+  preselectClientName?: string | null;
   currency?: string;
 }) {
   const [state, action, pending] = useActionState(createProposal, undefined);
   const [items, setItems] = useState([{ ...emptyItem }]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   const total = items.reduce((sum, item) => sum + item.qty * (Number(item.unitPrice) || 0), 0);
+
+  function moveItem(from: number, to: number) {
+    setItems((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
 
   function updateItem(index: number, patch: Partial<(typeof items)[number]>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -66,6 +78,7 @@ export function ProposalForm({
             <input
               name="clientName"
               required
+              defaultValue={preselectClientName ?? undefined}
               placeholder="Jane Doe"
               className="input"
             />
@@ -128,8 +141,40 @@ export function ProposalForm({
           {items.map((item, index) => (
             <div
               key={index}
-              className="grid grid-cols-2 items-end gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-[1fr_5rem_7rem_2.5rem] sm:border-0 sm:bg-transparent sm:p-0"
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragIndex !== null && dragIndex !== index) {
+                  e.dataTransfer.dropEffect = "move";
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (dragIndex !== null && dragIndex !== index) {
+                  moveItem(dragIndex, index);
+                }
+                setDragIndex(null);
+              }}
+              className={`grid grid-cols-2 items-end gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition sm:grid-cols-[2rem_1fr_5rem_7rem_2.5rem] sm:border-0 sm:bg-transparent sm:p-0 ${
+                dragIndex === index ? "ring-2 ring-brand-300" : ""
+              }`}
             >
+              <span
+                draggable
+                onDragStart={(e) => {
+                  setDragIndex(index);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={() => setDragIndex(null)}
+                className="mb-1 hidden cursor-grab select-none justify-center text-slate-300 transition hover:text-slate-500 active:cursor-grabbing sm:flex"
+                title="Drag to reorder"
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" className="size-5" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.4" /><circle cx="15" cy="6" r="1.4" />
+                  <circle cx="9" cy="12" r="1.4" /><circle cx="15" cy="12" r="1.4" />
+                  <circle cx="9" cy="18" r="1.4" /><circle cx="15" cy="18" r="1.4" />
+                </svg>
+              </span>
               <input
                 value={item.description}
                 onChange={(e) => updateItem(index, { description: e.target.value })}

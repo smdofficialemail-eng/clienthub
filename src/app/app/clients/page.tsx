@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireWorkspace } from "@/lib/app";
 import { formatMoney, timeAgo } from "@/lib/format";
@@ -27,16 +28,24 @@ export default async function ClientsPage() {
             Everyone you&apos;ve converted from leads — with the stage they won from.
           </p>
         </div>
-        <div className="card flex items-center gap-3 px-5 py-3.5">
-          <span className="icon-chip bg-emerald-50 text-emerald-600">
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 12l2 2 4-4m5.6-1.6A10 10 0 1 1 5.4 5.4 10 10 0 0 1 18.6 4.4z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Won value</p>
-            <p className="mt-0.5 text-xl font-extrabold text-slate-900">{formatMoney(totalValue, workspace.currency)}</p>
+        <div className="flex items-center gap-3">
+          <div className="card flex items-center gap-3 px-5 py-3.5">
+            <span className="icon-chip bg-emerald-50 text-emerald-600">
+              <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 12l2 2 4-4m5.6-1.6A10 10 0 1 1 5.4 5.4 10 10 0 0 1 18.6 4.4z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Won value</p>
+              <p className="mt-0.5 text-xl font-extrabold text-slate-900">{formatMoney(totalValue, workspace.currency)}</p>
+            </div>
           </div>
+          <Link href="/app/clients/new" className="btn-primary px-4 py-2">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
+            </svg>
+            New client
+          </Link>
         </div>
       </div>
 
@@ -44,14 +53,18 @@ export default async function ClientsPage() {
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-16 text-center">
           <p className="font-extrabold text-slate-700">No clients yet</p>
           <p className="mt-1 text-sm text-slate-400">
-            Convert a lead from the pipeline to add your first client.
+            Add your first client, or convert a lead from the pipeline.
           </p>
+          <Link href="/app/clients/new" className="btn-primary mt-5 px-4 py-2">
+            Add client
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clients.map((client) => (
-            <div
+            <Link
               key={client.id}
+              href={`/app/clients/${client.id}`}
               className="card card-hover p-5"
             >
               <div className="flex items-center gap-3">
@@ -103,7 +116,7 @@ export default async function ClientsPage() {
                   </span>
                 )}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

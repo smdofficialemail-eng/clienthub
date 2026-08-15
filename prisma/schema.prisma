@@ -153,6 +153,10 @@ model Client {
   company     String?
   email       String?
   phone       String?
+  address     String?
+  website     String?
+  industry    String?
+  notes       String?
   leadId      String?   @unique
   lead        Lead?     @relation("ClientLead", fields: [leadId], references: [id], onDelete: SetNull)
   workspaceId String

@@ -7,10 +7,10 @@ export const metadata = { title: "New proposal — ClientHub" };
 export default async function NewProposalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ lead?: string }>;
+  searchParams: Promise<{ lead?: string; client?: string }>;
 }) {
   const { workspace } = await requireWorkspace();
-  const { lead } = await searchParams;
+  const { lead, client } = await searchParams;
 
   const leads = await prisma.lead.findMany({
     where: { workspaceId: workspace.id, status: { in: ["active", "won"] } },
@@ -26,7 +26,12 @@ export default async function NewProposalPage({
           Build the quote, then send your client a link to view and approve it.
         </p>
       </div>
-      <ProposalForm leads={leads} preselectLeadId={lead ?? null} currency={workspace.currency} />
+      <ProposalForm
+        leads={leads}
+        preselectLeadId={lead ?? null}
+        preselectClientName={client ?? null}
+        currency={workspace.currency}
+      />
     </div>
   );
 }
