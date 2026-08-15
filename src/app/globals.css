@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Slim scrollbars for the kanban board */
+.board-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.board-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Drag states */
+.lead-card.dragging {
+  opacity: 0.4;
+}
+.column-drop.drag-over {
+  background: #eef2ff;
+  outline: 2px dashed #818cf8;
+  outline-offset: -2px;
+}

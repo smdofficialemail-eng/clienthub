@@ -1,0 +1,194 @@
+// ClientHub — multi-tenant CRM for freelancers & agencies
+// PostgreSQL in production (and locally when DATABASE_URL points at one).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String?
+  email        String       @unique
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+  activities   Activity[]
+}
+
+model Workspace {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  logoUrl     String?
+  accent      String       @default("#4f46e5")
+  createdAt   DateTime     @default(now())
+  memberships Membership[]
+  pipelines   Pipeline[]
+  leads       Lead[]
+  clients     Client[]
+  proposals   Proposal[]
+  invoices    Invoice[]
+}
+
+model Membership {
+  id          String    @id @default(cuid())
+  role        String    @default("owner") // owner | admin | member
+  userId      String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Pipeline {
+  id          String          @id @default(cuid())
+  name        String
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  stages      PipelineStage[]
+  leads       Lead[]
+  createdAt   DateTime        @default(now())
+}
+
+model PipelineStage {
+  id         String   @id @default(cuid())
+  name       String
+  position   Int      @default(0)
+  color      String   @default("#64748b")
+  pipelineId String
+  pipeline   Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads      Lead[]
+}
+
+model Lead {
+  id          String           @id @default(cuid())
+  name        String
+  company     String?
+  email       String?
+  phone       String?
+  value       Float            @default(0)
+  source      String?
+  notes       String?
+  status      String           @default("active") // active | won | lost
+  stageId     String?
+  stage       PipelineStage?   @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  pipelineId  String
+  pipeline    Pipeline         @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  activities  Activity[]
+  tasks       Task[]
+  client      Client?          @relation("ClientLead")
+  proposals   Proposal[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  type      String   @default("note") // note | call | email | meeting
+  body      String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id        String    @id @default(cuid())
+  title     String
+  done      Boolean   @default(false)
+  dueDate   DateTime?
+  leadId    String
+  lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String
+  company     String?
+  email       String?
+  phone       String?
+  leadId      String?   @unique
+  lead        Lead?     @relation("ClientLead", fields: [leadId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model Proposal {
+  id          String          @id @default(cuid())
+  title       String
+  clientName  String
+  clientEmail String
+  intro       String?
+  status      String          @default("draft") // draft | sent | viewed | approved | declined
+  token       String          @unique @default(cuid())
+  leadId      String?
+  lead        Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items       ProposalItem[]
+  invoice     Invoice?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([workspaceId])
+  @@index([token])
+}
+
+model ProposalItem {
+  id          String   @id @default(cuid())
+  proposalId  String
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  description String
+  qty         Int      @default(1)
+  unitPrice   Float    @default(0)
+  sortOrder   Int      @default(0)
+
+  @@index([proposalId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  number      String
+  title       String
+  clientName  String
+  clientEmail String
+  intro       String?
+  status      String        @default("draft") // draft | sent | paid | overdue
+  dueDate     DateTime?
+  paidAt      DateTime?
+  proposalId  String?       @unique
+  proposal    Proposal?     @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items       InvoiceItem[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([workspaceId])
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  qty         Int     @default(1)
+  unitPrice   Float   @default(0)
+  sortOrder   Int     @default(0)
+
+  @@index([invoiceId])
+}
