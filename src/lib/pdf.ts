@@ -123,8 +123,11 @@ function drawRightText(
   size: number,
   color = COLOR.ink
 ) {
-  const width = font.widthOfTextAtSize(text, size);
-  drawText(page, font, text, xRight - width, y, size, color);
+  // Measure the sanitized string — raw text may contain chars WinAnsi can't encode
+  // (e.g. ₹), which makes widthOfTextAtSize throw before drawText can sanitize.
+  const safe = toWinAnsi(text);
+  const width = font.widthOfTextAtSize(safe, size);
+  drawText(page, font, safe, xRight - width, y, size, color);
 }
 
 function drawLine(page: PDFPage, x1: number, y: number, x2: number, color = COLOR.line, width = 1) {
