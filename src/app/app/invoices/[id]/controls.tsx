@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 type SendAction = (invoiceId: string) => Promise<{ error?: string } | undefined>;
+type EmailAction = (invoiceId: string) => Promise<{ error?: string; ok?: boolean } | undefined>;
 type MarkPaidAction = (invoiceId: string) => Promise<{ error?: string } | undefined>;
 type DeleteAction = (invoiceId: string) => Promise<void>;
 
@@ -12,6 +13,7 @@ export function InvoiceControls({
   canSend,
   canMarkPaid,
   sendAction,
+  emailAction,
   markPaidAction,
   deleteAction,
 }: {
@@ -20,6 +22,7 @@ export function InvoiceControls({
   canSend: boolean;
   canMarkPaid: boolean;
   sendAction: SendAction;
+  emailAction: EmailAction;
   markPaidAction: MarkPaidAction;
   deleteAction: DeleteAction;
 }) {
@@ -27,11 +30,15 @@ export function InvoiceControls({
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  async function run(kind: "send" | "paid") {
+  async function run(kind: "send" | "email" | "paid") {
     setPending(kind);
     setError(null);
     const result =
-      kind === "send" ? await sendAction(invoiceId) : await markPaidAction(invoiceId);
+      kind === "send"
+        ? await sendAction(invoiceId)
+        : kind === "email"
+          ? await emailAction(invoiceId)
+          : await markPaidAction(invoiceId);
     if (result?.error) setError(result.error);
     setPending(null);
   }
@@ -48,16 +55,26 @@ export function InvoiceControls({
           <button
             onClick={() => run("send")}
             disabled={pending !== null}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
+            className="btn-primary px-4 py-2"
           >
             {pending === "send" ? "Marking…" : "Send to client"}
+          </button>
+        )}
+        {status !== "paid" && (
+          <button
+            onClick={() => run("email")}
+            disabled={pending !== null}
+            className="btn-secondary px-4 py-2"
+            title="Email the invoice to the client with the PDF attached"
+          >
+            {pending === "email" ? "Sending…" : "✉ Email invoice"}
           </button>
         )}
         {canMarkPaid && (
           <button
             onClick={() => run("paid")}
             disabled={pending !== null}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-700 disabled:opacity-60"
+            className="btn-success px-4 py-2"
           >
             {pending === "paid" ? "Marking…" : "✓ Mark as paid"}
           </button>
@@ -67,33 +84,24 @@ export function InvoiceControls({
             🎉 This invoice has been paid in full.
           </p>
         )}
-        <a
-          href={`/api/invoices/${invoiceId}/pdf`}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
-        >
+        <a href={`/api/invoices/${invoiceId}/pdf`} className="btn-secondary px-3 py-2 text-xs">
           ⬇ Download PDF
         </a>
         <div className="ml-auto">
           {confirmDelete ? (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-semibold text-red-600">Delete this invoice?</span>
-              <button
-                onClick={() => deleteAction(invoiceId)}
-                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
-              >
+              <button onClick={() => deleteAction(invoiceId)} className="btn-danger px-3 py-1.5 text-xs">
                 Yes, delete
               </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100"
-              >
+              <button onClick={() => setConfirmDelete(false)} className="btn-ghost px-3 py-1.5 text-xs">
                 Cancel
               </button>
             </div>
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="rounded-lg px-3 py-2 text-xs font-bold text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              className="btn-ghost px-3 py-2 text-xs hover:text-red-600 hover:bg-red-50"
             >
               Delete
             </button>

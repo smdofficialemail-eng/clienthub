@@ -39,5 +39,5 @@ export default async function PipelinePage() {
     );
   }
 
-  return <PipelineBoard pipeline={pipeline} />;
+  return <PipelineBoard pipeline={pipeline} currency={workspace.currency} />;
 }

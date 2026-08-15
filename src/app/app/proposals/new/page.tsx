@@ -26,7 +26,7 @@ export default async function NewProposalPage({
           Build the quote, then send your client a link to view and approve it.
         </p>
       </div>
-      <ProposalForm leads={leads} preselectLeadId={lead ?? null} />
+      <ProposalForm leads={leads} preselectLeadId={lead ?? null} currency={workspace.currency} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireWorkspace } from "@/lib/app";
 import { formatMoney, formatDate } from "@/lib/format";
 import { INVOICE_STATUS_META } from "../page";
-import { markInvoiceSent, markInvoicePaid, deleteInvoice } from "../actions";
+import { markInvoiceSent, markInvoicePaid, emailInvoice, deleteInvoice } from "../actions";
 import { InvoiceControls } from "./controls";
 
 export const metadata = { title: "Invoice — ClientHub" };
@@ -64,6 +64,7 @@ export default async function InvoiceDetailPage({
         canSend={canSend}
         canMarkPaid={canMarkPaid}
         sendAction={markInvoiceSent}
+        emailAction={emailInvoice}
         markPaidAction={markInvoicePaid}
         deleteAction={deleteInvoice}
       />
@@ -82,13 +83,13 @@ export default async function InvoiceDetailPage({
 
       {/* Document preview */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-slate-50 px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-xl bg-indigo-600 text-lg font-extrabold text-white">
-                C
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-6 sm:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-lg font-extrabold text-white">
+                {workspace.name.charAt(0).toUpperCase()}
               </span>
-              <p className="font-extrabold text-slate-900">ClientHub</p>
+              <p className="truncate font-extrabold text-slate-900">{workspace.name}</p>
             </div>
             <div className="text-right">
               <p className="text-sm font-extrabold text-slate-900">{invoice.number}</p>
@@ -98,7 +99,7 @@ export default async function InvoiceDetailPage({
             </div>
           </div>
         </div>
-        <div className="px-8 py-8">
+        <div className="px-5 py-8 sm:px-8">
           <p className="text-xs font-bold uppercase tracking-wide text-indigo-600">Billed to</p>
           <h2 className="mt-1 text-xl font-extrabold text-slate-900">{invoice.clientName}</h2>
           <p className="text-sm text-slate-500">{invoice.clientEmail}</p>
@@ -115,7 +116,8 @@ export default async function InvoiceDetailPage({
             </p>
           )}
 
-          <table className="mt-8 w-full text-left text-sm">
+          <div className="mt-8 overflow-x-auto">
+          <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wide text-slate-400">
                 <th className="py-2 pr-4">Item</th>
@@ -129,9 +131,9 @@ export default async function InvoiceDetailPage({
                 <tr key={item.id}>
                   <td className="py-3 pr-4 font-semibold text-slate-800">{item.description}</td>
                   <td className="py-3 text-right text-slate-500">{item.qty}</td>
-                  <td className="py-3 text-right text-slate-500">{formatMoney(item.unitPrice)}</td>
+                  <td className="py-3 text-right text-slate-500">{formatMoney(item.unitPrice, workspace.currency)}</td>
                   <td className="py-3 text-right font-bold text-slate-800">
-                    {formatMoney(item.qty * item.unitPrice)}
+                    {formatMoney(item.qty * item.unitPrice, workspace.currency)}
                   </td>
                 </tr>
               ))}
@@ -142,11 +144,12 @@ export default async function InvoiceDetailPage({
                   Total
                 </td>
                 <td className="py-4 text-right text-xl font-extrabold text-slate-900">
-                  {formatMoney(total)}
+                  {formatMoney(total, workspace.currency)}
                 </td>
               </tr>
             </tfoot>
           </table>
+          </div>
 
           {invoice.status === "paid" && invoice.paidAt && (
             <div className="mt-8 rounded-xl bg-emerald-50 px-5 py-4 text-sm font-bold text-emerald-700">

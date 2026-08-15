@@ -18,9 +18,11 @@ const emptyItem = { description: "", qty: 1, unitPrice: 0 };
 export function InvoiceForm({
   proposals,
   preselectProposalId,
+  currency = "USD",
 }: {
   proposals: ProposalOption[];
   preselectProposalId: string | null;
+  currency?: string;
 }) {
   const [state, action, pending] = useActionState(createInvoice, undefined);
   const [items, setItems] = useState([{ ...emptyItem }]);
@@ -75,13 +77,13 @@ export function InvoiceForm({
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               From approved proposal (optional)
             </label>
             <select
               value={proposalId}
               onChange={(e) => setProposalId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             >
               <option value="">Standalone invoice</option>
               {proposals.map((p) => (
@@ -95,7 +97,7 @@ export function InvoiceForm({
             </p>
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               Invoice title *
             </label>
             <input
@@ -104,11 +106,11 @@ export function InvoiceForm({
               onChange={(e) => setTitle(e.target.value)}
               required
               placeholder="e.g. Website redesign — Phase 1"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               Client name *
             </label>
             <input
@@ -117,11 +119,11 @@ export function InvoiceForm({
               onChange={(e) => setClientName(e.target.value)}
               required
               placeholder="Jane Doe"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               Client email *
             </label>
             <input
@@ -131,28 +133,28 @@ export function InvoiceForm({
               onChange={(e) => setClientEmail(e.target.value)}
               required
               placeholder="jane@acme.com"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               Payment due date
             </label>
             <input
               name="dueDate"
               type="date"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
+            <label className="label">
               Note (optional)
             </label>
             <textarea
               name="intro"
               rows={2}
               placeholder="Payment details, thank-you note, or terms…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
           </div>
         </div>
@@ -162,7 +164,7 @@ export function InvoiceForm({
         <h2 className="mb-4 text-sm font-extrabold uppercase tracking-wide text-slate-400">
           Line items
         </h2>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="hidden grid-cols-[1fr_5rem_7rem_2.5rem] gap-2 px-1 text-xs font-bold uppercase tracking-wide text-slate-400 sm:grid">
             <span>Description</span>
             <span>Qty</span>
@@ -172,20 +174,21 @@ export function InvoiceForm({
           {items.map((item, index) => (
             <div
               key={index}
-              className="grid grid-cols-[1fr_5rem_7rem_2.5rem] items-center gap-2"
+              className="grid grid-cols-2 items-end gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:grid-cols-[1fr_5rem_7rem_2.5rem] sm:border-0 sm:bg-transparent sm:p-0"
             >
               <input
                 value={item.description}
                 onChange={(e) => updateItem(index, { description: e.target.value })}
                 placeholder="e.g. Homepage design"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                className="input col-span-2 sm:col-span-1"
               />
               <input
                 value={item.qty}
                 onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
                 type="number"
                 min={1}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                aria-label="Quantity"
+                className="input"
               />
               <input
                 value={item.unitPrice}
@@ -194,13 +197,14 @@ export function InvoiceForm({
                 min={0}
                 step="0.01"
                 placeholder="0"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                aria-label="Unit price"
+                className="input"
               />
               <button
                 type="button"
                 onClick={() => removeItem(index)}
                 disabled={items.length === 1}
-                className="grid size-9 place-items-center rounded-lg text-slate-300 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
+                className="col-span-2 grid size-9 place-items-center justify-self-end rounded-lg text-slate-300 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40 sm:col-span-1"
                 aria-label="Remove item"
               >
                 <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -213,13 +217,13 @@ export function InvoiceForm({
         <button
           type="button"
           onClick={addItem}
-          className="mt-3 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:border-indigo-400 hover:text-indigo-600"
+          className="mt-3 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm font-semibold text-slate-500 transition hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50/50"
         >
           + Add item
         </button>
-        <div className="mt-5 flex items-center justify-between rounded-xl bg-slate-50 px-5 py-4">
+        <div className="mt-5 flex items-center justify-between rounded-xl bg-gradient-to-r from-slate-50 to-brand-50/40 px-5 py-4 ring-1 ring-slate-100">
           <span className="text-sm font-bold uppercase tracking-wide text-slate-400">Total</span>
-          <span className="text-2xl font-extrabold text-slate-900">{formatMoney(total)}</span>
+          <span className="text-2xl font-extrabold text-slate-900">{formatMoney(total, currency)}</span>
         </div>
       </section>
 
@@ -243,14 +247,14 @@ export function InvoiceForm({
       <div className="flex items-center justify-end gap-3">
         <Link
           href="/app/invoices"
-          className="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 transition hover:bg-slate-100"
+          className="btn-ghost px-4 py-2"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
+          className="btn-primary px-5 py-2"
         >
           {pending ? "Creating…" : "Create invoice"}
         </button>

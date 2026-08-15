@@ -30,7 +30,7 @@ export default async function NewInvoicePage({
           Bill for approved work — pick a proposal to pre-fill the details, or start fresh.
         </p>
       </div>
-      <InvoiceForm proposals={approvedProposals} preselectProposalId={proposal ?? null} />
+      <InvoiceForm proposals={approvedProposals} preselectProposalId={proposal ?? null} currency={workspace.currency} />
     </div>
   );
 }

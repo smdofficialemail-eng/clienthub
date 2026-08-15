@@ -61,7 +61,7 @@ export function ProposalControls({
           <button
             onClick={handleSend}
             disabled={sending}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
+            className="btn-primary px-4 py-2"
           >
             {sending ? "Sending…" : status === "draft" ? "Send to client" : "Re-send link"}
           </button>
@@ -75,37 +75,28 @@ export function ProposalControls({
             />
             <button
               onClick={handleCopy}
-              className="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
+              className="btn-secondary shrink-0 px-3 py-2 text-xs"
             >
               {copied ? "Copied ✓" : "Copy link"}
             </button>
           </div>
-          <a
-            href={`/api/proposals/${proposalId}/pdf`}
-            className="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
-          >
+          <a href={`/api/proposals/${proposalId}/pdf`} className="btn-secondary shrink-0 px-3 py-2 text-xs">
             ⬇ Download PDF
           </a>
           {confirmDelete ? (
             <div className="flex items-center gap-2 text-sm">
               <span className="font-semibold text-red-600">Delete this proposal?</span>
-              <button
-                onClick={() => deleteAction(proposalId)}
-                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700"
-              >
+              <button onClick={() => deleteAction(proposalId)} className="btn-danger px-3 py-1.5 text-xs">
                 Yes, delete
               </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100"
-              >
+              <button onClick={() => setConfirmDelete(false)} className="btn-ghost px-3 py-1.5 text-xs">
                 Cancel
               </button>
             </div>
           ) : (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+              className="btn-ghost shrink-0 px-3 py-2 text-xs hover:text-red-600 hover:bg-red-50"
             >
               Delete
             </button>
@@ -119,16 +110,10 @@ export function ProposalControls({
               : "Your client declined this proposal."}
           </p>
           <div className="flex items-center gap-2">
-            <a
-              href={`/api/proposals/${proposalId}/pdf`}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
-            >
+            <a href={`/api/proposals/${proposalId}/pdf`} className="btn-secondary px-3 py-2 text-xs">
               ⬇ Download PDF
             </a>
-            <Link
-              href={publicUrl}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
-            >
+            <Link href={publicUrl} className="btn-secondary px-3 py-2 text-xs">
               Open client view ↗
             </Link>
           </div>

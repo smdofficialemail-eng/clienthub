@@ -68,14 +68,14 @@ export default async function ProposalsPage({
               Approved value
             </p>
             <p className="mt-1 text-xl font-extrabold text-emerald-600">
-              {formatMoney(approvedTotal)}
+              {formatMoney(approvedTotal, workspace.currency)}
             </p>
           </div>
-          <Link
-            href="/app/proposals/new"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700"
-          >
-            + New proposal
+          <Link href="/app/proposals/new" className="btn-primary px-4 py-2">
+            <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
+            </svg>
+            New proposal
           </Link>
         </div>
       </div>
@@ -85,10 +85,10 @@ export default async function ProposalsPage({
           <Link
             key={t}
             href={t === "all" ? "/app/proposals" : `/app/proposals?tab=${t}`}
-            className={`rounded-full px-4 py-1.5 text-sm font-bold capitalize transition ${
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition-all ${
               activeTab === t
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-800"
+                ? "bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-md shadow-brand-600/25"
+                : "bg-white text-slate-500 shadow-sm ring-1 ring-slate-200/80 hover:bg-slate-50 hover:text-slate-800"
             }`}
           >
             {t} {counts[t] !== undefined && `(${counts[t]})`}
@@ -102,27 +102,25 @@ export default async function ProposalsPage({
           <p className="mt-1 text-sm text-slate-400">
             Create a proposal from a lead and send it a link to view and approve.
           </p>
-          <Link
-            href="/app/proposals/new"
-            className="mt-5 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700"
-          >
-            + New proposal
+          <Link href="/app/proposals/new" className="btn-primary mt-5 px-4 py-2">
+            New proposal
           </Link>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-5 py-3">Proposal</th>
-                <th className="px-5 py-3">Client</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Total</th>
-                <th className="px-5 py-3">Updated</th>
-                <th className="px-5 py-3" />
+        <div className="card overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+          <table className="pro-table w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-200/80">
+                <th>Proposal</th>
+                <th>Client</th>
+                <th>Status</th>
+                <th className="text-right">Total</th>
+                <th>Updated</th>
+                <th />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {totals.map((p) => {
                 const meta = STATUS_META[p.status] ?? STATUS_META.draft;
                 return (
@@ -143,7 +141,7 @@ export default async function ProposalsPage({
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right font-extrabold text-slate-900">
-                      {formatMoney(p.total)}
+                      {formatMoney(p.total, workspace.currency)}
                     </td>
                     <td className="px-5 py-4 text-slate-500">{formatDate(p.updatedAt)}</td>
                     <td className="px-5 py-4 text-right">
@@ -159,6 +157,7 @@ export default async function ProposalsPage({
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

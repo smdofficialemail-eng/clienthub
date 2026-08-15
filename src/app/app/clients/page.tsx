@@ -27,9 +27,16 @@ export default async function ClientsPage() {
             Everyone you&apos;ve converted from leads — with the stage they won from.
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Won value</p>
-          <p className="mt-1 text-xl font-extrabold text-slate-900">{formatMoney(totalValue)}</p>
+        <div className="card flex items-center gap-3 px-5 py-3.5">
+          <span className="icon-chip bg-emerald-50 text-emerald-600">
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 12l2 2 4-4m5.6-1.6A10 10 0 1 1 5.4 5.4 10 10 0 0 1 18.6 4.4z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Won value</p>
+            <p className="mt-0.5 text-xl font-extrabold text-slate-900">{formatMoney(totalValue, workspace.currency)}</p>
+          </div>
         </div>
       </div>
 
@@ -45,10 +52,10 @@ export default async function ClientsPage() {
           {clients.map((client) => (
             <div
               key={client.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              className="card card-hover p-5"
             >
               <div className="flex items-center gap-3">
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-base font-extrabold text-white shadow-md shadow-indigo-600/25">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 text-base font-extrabold text-white shadow-md shadow-brand-600/25">
                   {client.name.charAt(0).toUpperCase()}
                 </span>
                 <div className="min-w-0">
@@ -80,7 +87,7 @@ export default async function ClientsPage() {
                     Value
                   </span>
                   <span className="font-bold text-emerald-600">
-                    {formatMoney(client.lead?.value ?? 0)}
+                    {formatMoney(client.lead?.value ?? 0, workspace.currency)}
                   </span>
                 </div>
               </dl>

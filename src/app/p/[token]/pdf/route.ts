@@ -9,13 +9,16 @@ export async function GET(
 
   const proposal = await prisma.proposal.findUnique({
     where: { token },
-    include: { items: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      items: { orderBy: { sortOrder: "asc" } },
+      workspace: { select: { name: true, currency: true } },
+    },
   });
   if (!proposal) {
     return new Response("Proposal not found", { status: 404 });
   }
 
-  const pdf = await buildProposalPdf(proposal);
+  const pdf = await buildProposalPdf(proposal, proposal.workspace.name, proposal.workspace.currency);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

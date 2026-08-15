@@ -17,7 +17,7 @@ export async function GET(
     return new Response("Invoice not found", { status: 404 });
   }
 
-  const pdf = await buildInvoicePdf(invoice);
+  const pdf = await buildInvoicePdf(invoice, workspace.name, workspace.currency);
   return new Response(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",

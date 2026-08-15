@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireWorkspace } from "@/lib/app";
+import { sendInvoiceEmail } from "@/lib/mail";
 
 async function workspaceGuard() {
   const { workspace } = await requireWorkspace();
@@ -124,6 +125,31 @@ export async function markInvoicePaid(invoiceId: string) {
   revalidatePath(`/app/invoices/${invoiceId}`);
   revalidatePath("/app/invoices");
   revalidatePath("/app");
+}
+
+export async function emailInvoice(invoiceId: string) {
+  const workspace = await workspaceGuard();
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: invoiceId, workspaceId: workspace.id },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!invoice) return { error: "Invoice not found" };
+  if (!invoice.clientEmail) return { error: "This invoice has no client email to send to" };
+  if (invoice.status === "paid") return { error: "A paid invoice doesn't need to be emailed" };
+
+  try {
+    const result = await sendInvoiceEmail(workspace, invoice);
+    if (!result.ok) return { error: result.error };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send the email" };
+  }
+
+  if (invoice.status === "draft") {
+    await prisma.invoice.update({ where: { id: invoiceId }, data: { status: "sent" } });
+  }
+  revalidatePath(`/app/invoices/${invoiceId}`);
+  revalidatePath("/app/invoices");
+  return { ok: true };
 }
 
 export async function deleteInvoice(invoiceId: string) {

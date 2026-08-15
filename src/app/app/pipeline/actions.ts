@@ -145,13 +145,13 @@ export async function addTask(formData: FormData) {
   const leadId = String(formData.get("leadId") ?? "");
   if (!title || !leadId) return;
 
-  await prisma.task.create({ data: { title, leadId } });
+  await prisma.task.create({ data: { title, leadId, workspaceId: workspace.id } });
   revalidatePath("/app/pipeline");
 }
 
 export async function toggleTask(taskId: string) {
   const workspace = await workspaceGuard();
-  const task = await prisma.task.findFirst({ where: { id: taskId, lead: { workspaceId: workspace.id } } });
+  const task = await prisma.task.findFirst({ where: { id: taskId, workspaceId: workspace.id } });
   if (!task) return;
   await prisma.task.update({ where: { id: taskId }, data: { done: !task.done } });
   revalidatePath("/app/pipeline");

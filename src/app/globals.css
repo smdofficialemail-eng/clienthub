@@ -2,13 +2,126 @@
 
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  /* Refined shadows */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+  --shadow-raised: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 8px 24px -6px rgb(15 23 42 / 0.12);
+  --shadow-pop: 0 2px 4px 0 rgb(15 23 42 / 0.06), 0 16px 40px -12px rgb(15 23 42 / 0.2);
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Slim scrollbars for the kanban board */
+body {
+  color: var(--color-slate-900);
+  background-color: #f6f7fb;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::selection {
+  background: var(--color-brand-100);
+  color: var(--color-brand-900);
+}
+
+/* Focus visibility everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Reusable components ---------- */
+
+.card {
+  @apply rounded-2xl border border-slate-200/80 bg-white;
+  box-shadow: var(--shadow-card);
+}
+
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-raised);
+  border-color: var(--color-slate-200);
+  transform: translateY(-1px);
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-60 disabled:pointer-events-none;
+}
+
+.btn-primary {
+  @apply btn bg-brand-600 text-white;
+  box-shadow: 0 1px 2px rgb(79 70 229 / 0.35), 0 4px 12px -2px rgb(79 70 229 / 0.35);
+}
+.btn-primary:hover {
+  @apply bg-brand-700;
+  box-shadow: 0 1px 2px rgb(67 56 202 / 0.35), 0 6px 16px -2px rgb(67 56 202 / 0.4);
+}
+
+.btn-secondary {
+  @apply btn border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 hover:border-slate-300;
+}
+
+.btn-ghost {
+  @apply btn text-slate-500 hover:bg-slate-100 hover:text-slate-800;
+}
+
+.btn-danger {
+  @apply btn bg-red-600 text-white shadow-sm hover:bg-red-700;
+}
+
+.btn-success {
+  @apply btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700;
+}
+
+.input {
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400;
+}
+.input:focus {
+  @apply border-brand-400 ring-4 ring-brand-500/10;
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+}
+
+.icon-chip {
+  @apply grid size-10 shrink-0 place-items-center rounded-xl;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+.section-title {
+  @apply text-xs font-bold uppercase tracking-widest text-slate-400;
+}
+
+/* Subtle app background with soft radial tint */
+.app-bg {
+  background:
+    radial-gradient(1200px 500px at 85% -10%, rgb(99 102 241 / 0.07), transparent 60%),
+    radial-gradient(900px 400px at -10% 110%, rgb(139 92 246 / 0.05), transparent 55%),
+    #f6f7fb;
+}
+
+/* ---------- Kanban board ---------- */
 .board-scroll::-webkit-scrollbar {
   height: 10px;
   width: 10px;
@@ -16,17 +129,30 @@ html {
 .board-scroll::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 999px;
+  border: 2px solid #f6f7fb;
 }
 .board-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-/* Drag states */
 .lead-card.dragging {
-  opacity: 0.4;
+  opacity: 0.35;
+  transform: rotate(2deg) scale(0.98);
 }
+
 .column-drop.drag-over {
-  background: #eef2ff;
-  outline: 2px dashed #818cf8;
+  background: var(--color-brand-50);
+  outline: 2px dashed var(--color-brand-300);
   outline-offset: -2px;
+}
+
+/* ---------- Tables ---------- */
+.pro-table thead th {
+  @apply bg-slate-50/80 px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400;
+}
+.pro-table tbody td {
+  @apply px-5 py-4 align-middle;
+}
+.pro-table tbody tr {
+  @apply border-t border-slate-100 transition-colors hover:bg-brand-50/40;
 }

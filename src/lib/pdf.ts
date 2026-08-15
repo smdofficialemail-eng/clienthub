@@ -25,6 +25,8 @@ export type PdfLineItem = {
 type DocumentData = {
   number: string;
   title: string;
+  companyName: string;
+  currency: string;
   documentLabel: string; // "Proposal" | "Invoice"
   forLabel: string; // "Prepared for" | "Billed to"
   clientName: string;
@@ -36,11 +38,19 @@ type DocumentData = {
   status: string;
 };
 
-const money = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+const moneyFormatters = new Map<string, Intl.NumberFormat>();
+function moneyFor(currency: string) {
+  let fmt = moneyFormatters.get(currency);
+  if (!fmt) {
+    fmt = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    });
+    moneyFormatters.set(currency, fmt);
+  }
+  return fmt;
+}
 
 const STATUS_META: Record<string, { label: string; color: ReturnType<typeof rgb> }> = {
   draft: { label: "Draft", color: COLOR.faint },
@@ -137,8 +147,8 @@ async function buildDocument(data: DocumentData): Promise<Uint8Array> {
     height: 24,
     color: COLOR.indigo,
   });
-  drawText(page, bold, "C", MARGIN + 8, y - 19, 13, COLOR.white);
-  drawText(page, bold, "ClientHub", MARGIN + 34, y - 18, 15, COLOR.ink);
+  drawText(page, bold, (data.companyName.charAt(0) || "C").toUpperCase(), MARGIN + 8, y - 19, 13, COLOR.white);
+  drawText(page, bold, data.companyName, MARGIN + 34, y - 18, 15, COLOR.ink);
   drawRightText(page, bold, data.number, PAGE_W - MARGIN, y - 18, 15, COLOR.ink);
   drawRightText(
     page,
@@ -215,6 +225,7 @@ async function buildDocument(data: DocumentData): Promise<Uint8Array> {
     y -= 8;
     drawText(page, font, item.description, MARGIN, y, 10, COLOR.ink);
     drawRightText(page, font, String(item.qty), PAGE_W - MARGIN - 168, y, 10, COLOR.muted);
+    const money = moneyFor(data.currency);
     drawRightText(page, font, money.format(item.unitPrice), PAGE_W - MARGIN - 108, y, 10, COLOR.muted);
     drawRightText(page, bold, money.format(item.qty * item.unitPrice), PAGE_W - MARGIN, y, 10, COLOR.ink);
     y -= 20;
@@ -224,7 +235,7 @@ async function buildDocument(data: DocumentData): Promise<Uint8Array> {
   drawLine(page, MARGIN, y + 6, PAGE_W - MARGIN, COLOR.ink, 1.5);
   y -= 6;
   drawRightText(page, bold, "TOTAL", PAGE_W - MARGIN - 108, y, 10, COLOR.muted);
-  drawRightText(page, bold, money.format(data.total), PAGE_W - MARGIN, y, 14, COLOR.ink);
+  drawRightText(page, bold, moneyFor(data.currency).format(data.total), PAGE_W - MARGIN, y, 14, COLOR.ink);
 
   // Settled banner
   if (data.status === "approved" || data.status === "paid") {
@@ -246,7 +257,7 @@ async function buildDocument(data: DocumentData): Promise<Uint8Array> {
   }
 
   // Footer
-  drawText(page, font, `Generated from ClientHub · ${data.title}`, MARGIN, MARGIN - 12, 8, COLOR.faint);
+  drawText(page, font, `Generated from ${data.companyName} · ${data.title}`, MARGIN, MARGIN - 12, 8, COLOR.faint);
 
   return pdf.save();
 }
@@ -259,7 +270,7 @@ export async function buildProposalPdf(proposal: {
   status: string;
   createdAt: Date;
   items: PdfLineItem[];
-}): Promise<Uint8Array> {
+}, companyName: string, currency = "USD"): Promise<Uint8Array> {
   const total = proposal.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const metaLines = [
     "Proposal · " +
@@ -273,6 +284,8 @@ export async function buildProposalPdf(proposal: {
   return buildDocument({
     number: "PROPOSAL",
     title: proposal.title,
+    companyName,
+    currency,
     documentLabel: "PROPOSAL",
     forLabel: "Prepared for",
     clientName: proposal.clientName,
@@ -296,7 +309,7 @@ export async function buildInvoicePdf(invoice: {
   dueDate: Date | null;
   paidAt: Date | null;
   items: PdfLineItem[];
-}): Promise<Uint8Array> {
+}, companyName: string, currency = "USD"): Promise<Uint8Array> {
   const total = invoice.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -309,6 +322,8 @@ export async function buildInvoicePdf(invoice: {
   return buildDocument({
     number: invoice.number,
     title: invoice.title,
+    companyName,
+    currency,
     documentLabel: "INVOICE",
     forLabel: "Billed to",
     clientName: invoice.clientName,

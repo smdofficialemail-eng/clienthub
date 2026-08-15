@@ -23,18 +23,27 @@ model User {
 }
 
 model Workspace {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
-  slug        String       @unique
+  slug        String        @unique
   logoUrl     String?
-  accent      String       @default("#4f46e5")
-  createdAt   DateTime     @default(now())
+  accent      String        @default("#4f46e5")
+  currency    String        @default("USD")
+  // Outgoing email (SMTP) — used to send invoices to clients.
+  smtpHost    String?
+  smtpPort    Int?
+  smtpUser    String?
+  smtpPass    String?
+  smtpFrom    String?
+  createdAt   DateTime      @default(now())
   memberships Membership[]
   pipelines   Pipeline[]
   leads       Lead[]
   clients     Client[]
   proposals   Proposal[]
   invoices    Invoice[]
+  tasks       Task[]
+  appointments Appointment[]
 }
 
 model Membership {
@@ -87,6 +96,7 @@ model Lead {
   workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   activities  Activity[]
   tasks       Task[]
+  appointments Appointment[]
   client      Client?          @relation("ClientLead")
   proposals   Proposal[]
   createdAt   DateTime         @default(now())
@@ -105,13 +115,36 @@ model Activity {
 }
 
 model Task {
-  id        String    @id @default(cuid())
-  title     String
-  done      Boolean   @default(false)
-  dueDate   DateTime?
-  leadId    String
-  lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
+  id          String    @id @default(cuid())
+  title       String
+  done        Boolean   @default(false)
+  priority    String    @default("normal") // low | normal | high
+  dueDate     DateTime?
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model Appointment {
+  id          String    @id @default(cuid())
+  title       String
+  clientName  String?
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  startsAt    DateTime
+  durationMin Int       @default(60)
+  notes       String?
+  status      String    @default("scheduled") // scheduled | completed | cancelled
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+  @@index([startsAt])
 }
 
 model Client {

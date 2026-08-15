@@ -78,7 +78,7 @@ async function main() {
       stageId: contacted.id,
       pipelineId: pipeline.id,
       workspaceId: workspace.id,
-      tasks: { create: [{ title: "Send follow-up email" }] },
+      tasks: { create: [{ title: "Send follow-up email", workspaceId: workspace.id }] },
       activities: { create: [{ body: "Called Jane — interested in the starter package", type: "call", userId: user.id }] },
     },
   });

@@ -26,7 +26,7 @@ const TYPE_BADGES: Record<string, string> = {
   meeting: "bg-amber-100 text-amber-700",
 };
 
-export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
+export function PipelineBoard({ pipeline, currency = "USD" }: { pipeline: BoardPipeline; currency?: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingToStage, setAddingToStage] = useState<string | null>(null);
   const [dragLead, setDragLead] = useState<string | null>(null);
@@ -57,11 +57,11 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
             Drag leads between stages to move them through your sales process.
           </p>
         </div>
-        <button
-          onClick={() => setAddingToStage(pipeline.stages[0]?.id ?? "")}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700"
-        >
-          + Add lead
+        <button onClick={() => setAddingToStage(pipeline.stages[0]?.id ?? "")} className="btn-primary px-4 py-2">
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M12 5v14m-7-7h14" strokeLinecap="round" />
+          </svg>
+          Add lead
         </button>
       </div>
 
@@ -70,7 +70,7 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
         {pipeline.stages.map((stage) => (
           <div
             key={stage.id}
-            className={`column-drop flex w-72 shrink-0 flex-col rounded-2xl border border-slate-200 bg-slate-100/70 ${
+            className={`column-drop flex w-72 shrink-0 flex-col rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-sm ${
               dragOverStage === stage.id ? "drag-over" : ""
             }`}
             onDragOver={(e) => {
@@ -116,18 +116,30 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
                     setDragOverStage(null);
                   }}
                   onClick={() => setSelectedId(lead.id)}
-                  className={`lead-card block w-full rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
+                  className={`lead-card block w-full rounded-xl border border-slate-200/90 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-raised hover:border-brand-200 ${
                     dragLead === lead.id ? "dragging" : ""
-                  } ${selectedId === lead.id ? "ring-2 ring-indigo-400" : ""}`}
+                  } ${selectedId === lead.id ? "ring-2 ring-brand-400 border-transparent" : ""}`}
                 >
-                  <p className="truncate font-bold text-slate-800">{lead.name}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-400">
-                    {lead.company ?? "No company"}
-                    {lead.source ? ` · ${lead.source}` : ""}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-bold text-white"
+                      style={{
+                        background: `linear-gradient(135deg, ${stage.color}, ${stage.color}bb)`,
+                      }}
+                    >
+                      {lead.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-bold text-slate-800">{lead.name}</p>
+                      <p className="truncate text-xs text-slate-400">
+                        {lead.company ?? "No company"}
+                        {lead.source ? ` · ${lead.source}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center justify-between">
                     <span className="text-sm font-extrabold text-slate-700">
-                      {formatMoney(lead.value)}
+                      {formatMoney(lead.value, currency)}
                     </span>
                     <span className="text-xs text-slate-300">
                       {lead.tasks.filter((t) => !t.done).length > 0
@@ -154,20 +166,14 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
         {/* Add stage */}
         <div className="w-64 shrink-0 self-start rounded-2xl border border-dashed border-slate-300 bg-white/60 p-3">
           <form action={stageAction} className="space-y-2">
-            <input
-              name="name"
-              required
-              maxLength={60}
-              placeholder="New stage name"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-            />
+            <input name="name" required maxLength={60} placeholder="New stage name" className="input" />
             {stageState?.error && (
               <p className="text-xs font-medium text-red-500">{stageState.error}</p>
             )}
             <button
               type="submit"
               disabled={stagePending}
-              className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="btn w-full bg-slate-900 py-2.5 text-white hover:bg-slate-800"
             >
               {stagePending ? "Adding…" : "Add stage"}
             </button>
@@ -195,80 +201,41 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
                 </p>
               )}
               <div className="col-span-2">
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Name *
-                </label>
-                <input
-                  name="name"
-                  required
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                <label className="label">Name *</label>
+                <input name="name" required className="input" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Company
-                </label>
-                <input
-                  name="company"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                <label className="label">Company</label>
+                <input name="company" className="input" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Value ($)
-                </label>
+                <label className="label">Value ($)</label>
                 <input
                   name="value"
                   type="number"
                   min="0"
                   step="1"
                   defaultValue="0"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  className="input"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Email
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                <label className="label">Email</label>
+                <input name="email" type="email" className="input" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Source
-                </label>
-                <input
-                  name="source"
-                  placeholder="e.g. Website"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                <label className="label">Source</label>
+                <input name="source" placeholder="e.g. Website" className="input" />
               </div>
               <div className="col-span-2">
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">
-                  Notes
-                </label>
-                <textarea
-                  name="notes"
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                <label className="label">Notes</label>
+                <textarea name="notes" rows={2} className="input" />
               </div>
               <div className="col-span-2 mt-1 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAddingToStage(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100"
-                >
+                <button type="button" onClick={() => setAddingToStage(null)} className="btn-ghost px-4 py-2">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={leadPending}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition hover:bg-indigo-700 disabled:opacity-60"
-                >
+                <button type="submit" disabled={leadPending} className="btn-primary px-4 py-2">
                   {leadPending ? "Adding…" : "Add lead"}
                 </button>
               </div>
@@ -281,6 +248,7 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
       {selected && (
         <LeadDetail
           lead={selected}
+          currency={currency}
           onClose={() => setSelectedId(null)}
           onConvert={async () => {
             await convertToClient(selected.id);
@@ -293,10 +261,12 @@ export function PipelineBoard({ pipeline }: { pipeline: BoardPipeline }) {
 
 function LeadDetail({
   lead,
+  currency = "USD",
   onClose,
   onConvert,
 }: {
   lead: LeadWithData;
+  currency?: string;
   onClose: () => void;
   onConvert: () => void;
 }) {
@@ -317,7 +287,7 @@ function LeadDetail({
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600">
-                {formatMoney(lead.value)}
+                {formatMoney(lead.value, currency)}
               </span>
               {lead.source && (
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold text-slate-600">
@@ -351,13 +321,13 @@ function LeadDetail({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Add context about this lead…"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              className="input"
             />
             <button
               onClick={async () => {
                 await updateLeadNotes(lead.id, notes);
               }}
-              className="mt-2 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-800"
+              className="btn mt-2 bg-slate-900 px-3 py-1.5 text-xs text-white hover:bg-slate-800"
             >
               Save notes
             </button>
